@@ -1,12 +1,26 @@
+import hashlib
 import json
 import sys
+import urllib.request
+import zipfile
 from pathlib import Path
 
 import duckdb
 
-RAW_DIR = Path("source_data/opxrd/hodge_alwen_1")
-MAX_PATTERNS = 169
+DATA_DIR = Path("data/raw")
+RAW_DIR = DATA_DIR / "hodge_alwen_1"
+ARCHIVE = DATA_DIR / "hodge_alwen_1.zip"
 
+DATA_URL = (
+    "https://huggingface.co/datasets/nimanyuj/"
+    "xrd-etl-data/resolve/main/hodge_alwen_1.zip"
+)
+
+EXPECTED_SHA256 = (
+    "39fd40e1bd6103e6a0c7f2c1ec3f8c1895fb423277e46a1258922660d5f3dd98"
+)
+
+MAX_PATTERNS = 169
 
 def parse_json_string(value):
     """Convert JSON stored as a string into a Python dictionary."""
@@ -18,8 +32,57 @@ def parse_json_string(value):
 
     return json.loads(value)
 
+def sha256sum(path):
+    digest = hashlib.sha256()
+
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
+
+def ensure_raw_data():
+    if RAW_DIR.exists():
+        return
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    if not ARCHIVE.exists():
+        print("[etl] Downloading XRD source data", flush=True)
+        urllib.request.urlretrieve(DATA_URL, ARCHIVE)
+
+    actual_hash = sha256sum(ARCHIVE)
+
+    if actual_hash != EXPECTED_SHA256:
+        ARCHIVE.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"Dataset checksum mismatch: {actual_hash}"
+        )
+
+    print("[etl] Dataset checksum verified", flush=True)
+    print("[etl] Extracting source data", flush=True)
+
+    with zipfile.ZipFile(ARCHIVE) as zf:
+        zf.extractall(DATA_DIR)
+
+    # The uploaded archive may contain the original directory hierarchy.
+    if not RAW_DIR.exists():
+        matches = [
+            path
+            for path in DATA_DIR.rglob("hodge_alwen_1")
+            if path.is_dir()
+        ]
+
+        if len(matches) != 1:
+            raise RuntimeError(
+                "Could not uniquely locate hodge_alwen_1 after extraction"
+            )
+
+        matches[0].rename(RAW_DIR)
 
 def main(out):
+    ensure_raw_data()
     files = sorted(RAW_DIR.rglob("*.json"))
 
     if not files:

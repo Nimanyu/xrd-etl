@@ -16,8 +16,4 @@ programmatically from an external source rather than store raw data in the
 Git repository. However, opXRD is currently distributed as a much larger
 archive, while this ETL uses only a small subset of the full dataset.
 
-As a practical compromise for this submission, the required
-`hodge_alwen_1` source files are included directly in the repository. This
-allows a grader to run
-
-
+I was able to recover my huggingface account so the data was moved there.
