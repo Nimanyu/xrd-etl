@@ -7,7 +7,7 @@ ARG TYPST_VERSION=v0.13.1
 
 # Get dependencies: typst and cargo
 RUN apt-get update \
- && apt-get install -y --no-install-recommends make curl ca-certificates xz-utils build-essential pkg-config \
+ && apt-get install -y --no-install-recommends make curl ca-certificates xz-utils build-essential pkg-config swig libboost-all-dev \
  && rm -rf /var/lib/apt/lists/* \
  && arch="$(uname -m)" \
  && curl -fsSL "https://github.com/typst/typst/releases/download/${TYPST_VERSION}/typst-${arch}-unknown-linux-musl.tar.xz" \

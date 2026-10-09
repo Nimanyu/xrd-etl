@@ -12,10 +12,10 @@
 # make all CONFIG=config.hpc.yaml -> same, all plates (what the Slurm job runs)
 CONFIG ?= config.yaml
 
-all: report/main.pdf
+all: data/dataset.db
 
-data/dataset.db: src/mseml/etl.py schema.sql $(CONFIG)
-	uv run python -m mseml.etl $(CONFIG) $@
+data/dataset.db: src/mseml/etl.py schema.sql
+	uv run python -m mseml.etl $@
 
 results/results.json: data/dataset.db src/mseml/analysis.py $(CONFIG)
 	uv run python -m mseml.analysis $(CONFIG) $< figures results/results.json
