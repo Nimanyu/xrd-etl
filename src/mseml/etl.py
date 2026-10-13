@@ -4,6 +4,9 @@ import sys
 import urllib.request
 import zipfile
 from pathlib import Path
+import csv
+import tempfile
+
 
 import duckdb
 
@@ -194,15 +197,23 @@ def main(out):
         pattern_rows,
     )
 
-    db.executemany(
-        """
-        INSERT INTO pattern_points VALUES (
-            ?, ?, ?, ?
-        )
-        """,
-        point_rows,
-    )
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        newline="",
+        suffix=".csv",
+        delete=False,
+    ) as f:
+        writer = csv.writer(f)
+        writer.writerows(point_rows)
+        points_file = f.name
 
+        db.execute(f"""
+        COPY pattern_points
+        FROM '{points_file}'
+        (FORMAT CSV)
+    """)
+
+    Path(points_file).unlink()
     if phase_rows:
         db.executemany(
             """
