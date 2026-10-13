@@ -3,9 +3,6 @@ CREATE TABLE patterns (
     source_collection VARCHAR,
     source_file VARCHAR,
 
-    two_theta DOUBLE[],
-    intensity DOUBLE[],
-
     is_simulated BOOLEAN,
     primary_wavelength DOUBLE,
     secondary_wavelength DOUBLE,
@@ -16,10 +13,17 @@ CREATE TABLE patterns (
     contributor_name VARCHAR,
     original_file_format VARCHAR,
     measurement_date VARCHAR,
-    xrdpattern_version VARCHAR,
+    xrdpattern_version VARCHAR
+);
 
-    raw_label VARCHAR,
-    raw_metadata VARCHAR
+CREATE TABLE pattern_points (
+    pattern_id VARCHAR,
+    point_index INTEGER,
+    two_theta DOUBLE NOT NULL,
+    intensity DOUBLE NOT NULL,
+
+    PRIMARY KEY (pattern_id, point_index),
+    FOREIGN KEY (pattern_id) REFERENCES patterns(pattern_id)
 );
 
 CREATE TABLE phases (
@@ -37,8 +41,6 @@ CREATE TABLE phases (
     alpha DOUBLE,
     beta DOUBLE,
     gamma DOUBLE,
-
-    crystal_system VARCHAR,
 
     PRIMARY KEY (pattern_id, phase_index),
     FOREIGN KEY (pattern_id) REFERENCES patterns(pattern_id)

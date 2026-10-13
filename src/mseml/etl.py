@@ -101,6 +101,7 @@ def main(out):
     db.execute(Path("schema.sql").read_text())
 
     pattern_rows = []
+    point_rows = []
     phase_rows = []
 
     for path in files:
@@ -127,8 +128,6 @@ def main(out):
                 pattern_id,
                 path.parent.name,
                 str(path),
-                two_theta,
-                intensity,
                 label.get("is_simulated"),
                 xray.get("primary_wavelength"),
                 xray.get("secondary_wavelength"),
@@ -139,9 +138,19 @@ def main(out):
                 metadata.get("original_file_format"),
                 metadata.get("measurement_date"),
                 metadata.get("xrdpattern_version"),
-                raw.get("label"),
-                raw.get("metadata"),
             )
+        )
+
+        for point_index, (theta, counts) in enumerate(
+            zip(two_theta, intensity)
+        ):
+            point_rows.append(
+                (
+                    pattern_id,
+                    point_index,
+                    theta,
+                    counts,
+                )
         )
 
         # One XRD pattern can contain multiple phases.
@@ -164,7 +173,6 @@ def main(out):
                     angles.get("alpha"),
                     angles.get("beta"),
                     angles.get("gamma"),
-                    phase.get("crystal_system"),
                 )
             )
         if len(pattern_rows) % 10 == 0:
@@ -174,25 +182,41 @@ def main(out):
             break
     if not pattern_rows:
         raise RuntimeError("No valid XRD patterns were found")
+
+    db.execute("BEGIN TRANSACTION")
+
     db.executemany(
         """
         INSERT INTO patterns VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
         """,
         pattern_rows,
     )
+
+    db.executemany(
+        """
+        INSERT INTO pattern_points VALUES (
+            ?, ?, ?, ?
+        )
+        """,
+        point_rows,
+    )
+
     if phase_rows:
         db.executemany(
             """
             INSERT INTO phases VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             phase_rows,
         )
 
+    db.execute("COMMIT")
+
     print(f"[etl] Loaded {len(pattern_rows)} patterns")
+    print(f"[etl] Loaded {len(point_rows)} pattern points")
     print(f"[etl] Loaded {len(phase_rows)} phases")
     print(f"[etl] Database written to {out}")
 
