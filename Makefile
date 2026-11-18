@@ -1,27 +1,27 @@
-# Makefile for doing full analysis and creating report
-# Recipes have this form:
-# 'output: input1 input2 input3'
-# '	recipe line 1'
-# 
-# The recipes here are:
-# 1) Run ETL to get the database (Automatic variable '$@' is output - 'data/dataset.db' here)
-# 2) Run analysis to get results (Automatic variable '$<' first input - 'data/dataset.db' here)
-# 3) Create report pdf from typst
-#
-# make all                        -> report/main.pdf from nothing (sample data)
-# make all CONFIG=config.hpc.yaml -> same, all plates (what the Slurm job runs)
+
+
+# Makefile for XRD ETL, model training, analysis, and report
+
 CONFIG ?= config.yaml
 
-all: data/inputs/train.safetensors data/inputs/eval.safetensors
+all: report/main.pdf
 
+# Build DuckDB database
 data/dataset.db: src/mseml/etl.py schema.sql
 	uv run python -m mseml.etl $@
 
+# Convert database into train/eval SafeTensors
 data/inputs/train.safetensors data/inputs/eval.safetensors &: data/dataset.db src/mseml/tensors.py
 	uv run python -m mseml.tensors data/dataset.db data/inputs
 
-results/results.json: data/dataset.db src/mseml/analysis.py $(CONFIG)
-	uv run python -m mseml.analysis $(CONFIG) $< figures results/results.json
+# Train CNN and evaluate CNN, dummy baseline, and positive control
+results/results.json: data/inputs/train.safetensors data/inputs/eval.safetensors src/mseml/model.py
+	uv run python -m mseml.model
 
-report/main.pdf: results/results.json report/main.typ report/refs.bib
+# Generate training curve
+results/training_curve.png: results/results.json src/mseml/plot.py
+	uv run python -m mseml.plot
+
+# Compile report
+report/main.pdf: results/results.json results/training_curve.png report/main.typ
 	typst compile --root . report/main.typ $@

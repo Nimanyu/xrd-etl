@@ -10,6 +10,7 @@ dependencies = [
     "numpy",
     "torch",
     "safetensors",
+    "matplotlib",
 ]
 
 [tool.uv.sources]
